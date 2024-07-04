@@ -1,5 +1,8 @@
+// Initialize canvas and rendering context with correct width and height
 const canvas = <HTMLCanvasElement>document.getElementById("canvas");
-const ctx = <CanvasRenderingContext2D>canvas.getContext("2d");
+canvas.height = document.body.clientHeight;
+canvas.width = document.body.clientWidth;
+const c = <CanvasRenderingContext2D>canvas.getContext("2d");
 
 var frame = 0;
 
@@ -8,7 +11,7 @@ const animationLoop = () => {
   window.requestAnimationFrame(animationLoop);
 
   // Clear screen
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  c.clearRect(0, 0, canvas.width, canvas.height);
 
   frame += 1;
 };
