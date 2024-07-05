@@ -7,7 +7,7 @@ const c = <CanvasRenderingContext2D>canvas.getContext("2d");
 var frame = 0;
 
 const antSight = 100;
-const antDistance = 2;
+const antSpeed = 2;
 
 type Ant = {
   x: number;
@@ -23,6 +23,12 @@ type Anthill = {
   food: number;
 };
 
+type Food = {
+  x: number;
+  y: number;
+  food: number;
+};
+
 const hill: Anthill = {
   x: Math.random() * (canvas.width - 100) + 50,
   y: Math.random() * (canvas.height - 100) + 50,
@@ -32,6 +38,16 @@ const hill: Anthill = {
 
 const ants: Ant[] = [];
 
+// Populate world food
+const worldFood: Food[] = [];
+for (let i = 0; i < 10; i++) {
+  worldFood.push({
+    x: Math.random() * (canvas.width - 100) + 50,
+    y: Math.random() * (canvas.height - 100) + 50,
+    food: Math.random() * 20 + 10,
+  });
+}
+
 const render = () => {
   // Clear screen
   c.clearRect(0, 0, canvas.width, canvas.height);
@@ -39,6 +55,14 @@ const render = () => {
   // Draw background color
   c.fillStyle = "sandybrown";
   c.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw food
+  c.fillStyle = "green";
+  for (let food of worldFood) {
+    c.beginPath();
+    c.arc(food.x, food.y, Math.sqrt(food.food / Math.PI) * 3, 0, Math.PI * 2);
+    c.fill();
+  }
 
   // Draw anthill
   c.fillStyle = "saddlebrown";
@@ -60,10 +84,7 @@ function sleep(ms: number) {
 }
 
 const animationLoop = async () => {
-  // Recursive
-  window.requestAnimationFrame(animationLoop);
-
-  // Handle anthill
+  // Update anthill
   if (hill.ants > 0 && frame % 150 == 0) {
     hill.ants -= 1;
     ants.push({
@@ -74,27 +95,61 @@ const animationLoop = async () => {
     });
   }
 
-  // Handle ants
+  // Update ants
   for (let ant of ants) {
-    ant.x += Math.cos(ant.direction) * antDistance;
-    ant.y += Math.sin(ant.direction) * antDistance;
-    ant.direction =
-      (ant.direction + Math.random() * 0.3 - 0.15) % (Math.PI * 2);
-    // if (ant.x > canvas.width) ant.x = canvas.width;
-    // if (ant.x < 0) ant.x = 0;
-    // if (ant.y > canvas.height) ant.y = canvas.height;
-    // if (ant.y < 0) ant.y = 0;
+    // If ant has food, returns to anthill
+    if (ant.hasFood) {
+      // Get direction to anthill
+      let hillDirection = Math.atan((hill.y - ant.y) / (hill.x - ant.x));
+      if (hill.x - ant.x < 0) hillDirection += Math.PI;
 
-    // If ant hits a border, reverse direction
-    if (ant.x > canvas.width || ant.x < 0 || ant.y > canvas.height || ant.y < 0)
-      ant.direction = (ant.direction + Math.PI) % (Math.PI * 2);
+      if (hillDirection < 0) hillDirection += Math.PI * 2;
+
+      let delta = ant.direction - hillDirection;
+      if (
+        (delta > 0 && delta < -1 * delta + Math.PI * 2) ||
+        (delta < 0 && delta + Math.PI * 2 < -1 * delta)
+      )
+        ant.direction -= 0.1;
+      else ant.direction += 0.1;
+    } else {
+      // Looking for food, wander randomly
+      ant.direction = ant.direction + Math.random() * 0.3 - 0.15;
+
+      // If ant hits a border, reverse direction
+      if (
+        ant.x > canvas.width ||
+        ant.x < 0 ||
+        ant.y > canvas.height ||
+        ant.y < 0
+      )
+        ant.direction += Math.PI;
+    }
+
+    // Normalize ant direction
+    ant.direction = ant.direction % (Math.PI * 2);
+    if (ant.direction < 0) ant.direction += Math.PI * 2;
+
+    // Ensure ant is within the borders
+    if (ant.x > canvas.width) ant.x = canvas.width;
+    if (ant.x < 0) ant.x = 0;
+    if (ant.y > canvas.height) ant.y = canvas.height;
+    if (ant.y < 0) ant.y = 0;
+
+    // Update ant position with current direction and speed
+    ant.x += Math.cos(ant.direction) * antSpeed;
+    ant.y += Math.sin(ant.direction) * antSpeed;
   }
 
+  // Render current state
   render();
 
-  // Set framerate to approximately 30fps
+  // Set framerate to approximately 60fps
   frame += 1;
-  await sleep(33);
+  await sleep(17);
+
+  // Recursive
+  window.requestAnimationFrame(animationLoop);
 };
 
 // Start animation loop
