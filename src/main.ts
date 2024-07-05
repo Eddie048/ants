@@ -9,21 +9,45 @@ canvas.width = document.body.clientWidth;
 // Time counter
 var tick = 0;
 
-const antSight = 100;
+const antSight = 200;
 const antSpeed = 2;
 
 const hill: Anthill = {
   x: Math.random() * (canvas.width - 100) + 50,
   y: Math.random() * (canvas.height - 100) + 50,
-  ants: 5,
+  ants: 20,
   food: 0,
 };
 
 const ants: Ant[] = [];
 
+const updateDirection = (
+  atX: number,
+  atY: number,
+  curDirection: number,
+  toX: number,
+  toY: number
+) => {
+  // Get direction to target
+  let targetDirection = Math.atan((toY - atY) / (toX - atX));
+  if (toX - atX < 0) targetDirection += Math.PI;
+
+  if (targetDirection < 0) targetDirection += Math.PI * 2;
+
+  let delta = curDirection - targetDirection;
+
+  // Get direction towards target
+  if (
+    (delta > 0 && delta < -1 * delta + Math.PI * 2) ||
+    (delta < 0 && delta + Math.PI * 2 < -1 * delta)
+  )
+    return (curDirection -= 0.1);
+  else return (curDirection += 0.1);
+};
+
 // Populate world food
 const worldFood: Food[] = [];
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 20; i++) {
   worldFood.push({
     x: Math.random() * (canvas.width - 100) + 50,
     y: Math.random() * (canvas.height - 100) + 50,
@@ -36,7 +60,7 @@ const updateLoop = () => {
   setTimeout(updateLoop, 17);
 
   // Update anthill
-  if (hill.ants > 0 && tick % 150 == 0) {
+  if (hill.ants > 0 && tick % 50 == 0) {
     hill.ants -= 1;
     ants.push({
       x: hill.x,
@@ -63,48 +87,57 @@ const updateLoop = () => {
         continue;
       }
 
-      // Get direction to anthill
-      let hillDirection = Math.atan(
-        (hill.y - ants[a].y) / (hill.x - ants[a].x)
+      // Turn towards anthill
+      ants[a].direction = updateDirection(
+        ants[a].x,
+        ants[a].y,
+        ants[a].direction,
+        hill.x,
+        hill.y
       );
-      if (hill.x - ants[a].x < 0) hillDirection += Math.PI;
-
-      if (hillDirection < 0) hillDirection += Math.PI * 2;
-
-      let delta = ants[a].direction - hillDirection;
-      if (
-        (delta > 0 && delta < -1 * delta + Math.PI * 2) ||
-        (delta < 0 && delta + Math.PI * 2 < -1 * delta)
-      )
-        ants[a].direction -= 0.1;
-      else ants[a].direction += 0.1;
     } else {
-      // If ant found food, eat it
+      // Find distance to nearest food
+      let distance = Number.MAX_VALUE;
+      let foodIndex = -1;
       for (let f = 0; f < worldFood.length; f++) {
-        if (
-          Math.sqrt(
-            Math.pow(worldFood[f].y - ants[a].y, 2) +
-              Math.pow(worldFood[f].x - ants[a].x, 2)
-          ) < 25
-        ) {
-          worldFood[f].food--;
-          if (worldFood[f].food <= 0) worldFood.splice(f, 1);
-          ants[a].hasFood = true;
-          break;
+        let tempDist = Math.sqrt(
+          Math.pow(worldFood[f].y - ants[a].y, 2) +
+            Math.pow(worldFood[f].x - ants[a].x, 2)
+        );
+
+        if (tempDist < distance) {
+          foodIndex = f;
+          distance = tempDist;
         }
       }
 
-      // Looking for food, wander randomly
-      ants[a].direction = ants[a].direction + Math.random() * 0.3 - 0.15;
+      // If found food, eat it
+      if (foodIndex != -1 && distance < 10) {
+        worldFood[foodIndex].food--;
+        if (worldFood[foodIndex].food <= 0) worldFood.splice(foodIndex, 1);
+        ants[a].hasFood = true;
+      } else if (foodIndex != -1 && distance < antSight) {
+        // If near food, go towards it
+        ants[a].direction = updateDirection(
+          ants[a].x,
+          ants[a].y,
+          ants[a].direction,
+          worldFood[foodIndex].x,
+          worldFood[foodIndex].y
+        );
+      } else {
+        // Looking for food, wander randomly
+        ants[a].direction = ants[a].direction + Math.random() * 0.3 - 0.15;
 
-      // If ant hits a border, reverse direction
-      if (
-        ants[a].x > canvas.width ||
-        ants[a].x < 0 ||
-        ants[a].y > canvas.height ||
-        ants[a].y < 0
-      )
-        ants[a].direction += Math.PI;
+        // If ant hits a border, reverse direction
+        if (
+          ants[a].x > canvas.width ||
+          ants[a].x < 0 ||
+          ants[a].y > canvas.height ||
+          ants[a].y < 0
+        )
+          ants[a].direction += Math.PI;
+      }
     }
 
     // Normalize ant direction
