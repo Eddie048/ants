@@ -1,33 +1,16 @@
+import Renderer from "./renderer";
+import { Ant, Anthill, Food } from "./types";
+
 // Initialize canvas and rendering context with correct width and height
 const canvas = <HTMLCanvasElement>document.getElementById("canvas");
 canvas.height = document.body.clientHeight;
 canvas.width = document.body.clientWidth;
-const c = <CanvasRenderingContext2D>canvas.getContext("2d");
 
-var frame = 0;
+// Time counter
+var tick = 0;
 
 const antSight = 100;
 const antSpeed = 2;
-
-type Ant = {
-  x: number;
-  y: number;
-  direction: number;
-  hasFood: boolean;
-};
-
-type Anthill = {
-  x: number;
-  y: number;
-  ants: number;
-  food: number;
-};
-
-type Food = {
-  x: number;
-  y: number;
-  food: number;
-};
 
 const hill: Anthill = {
   x: Math.random() * (canvas.width - 100) + 50,
@@ -48,50 +31,12 @@ for (let i = 0; i < 10; i++) {
   });
 }
 
-const render = () => {
-  // Clear screen
-  c.clearRect(0, 0, canvas.width, canvas.height);
+// Logic loop to update everything
+const updateLoop = () => {
+  setTimeout(updateLoop, 17);
 
-  // Draw background color
-  c.fillStyle = "sandybrown";
-  c.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Draw food
-  c.fillStyle = "green";
-  for (let food of worldFood) {
-    c.beginPath();
-    c.arc(
-      food.x,
-      food.y,
-      Math.sqrt(food.food / Math.PI) * 3 + 5,
-      0,
-      Math.PI * 2
-    );
-    c.fill();
-  }
-
-  // Draw anthill
-  c.fillStyle = "saddlebrown";
-  c.beginPath();
-  c.arc(hill.x, hill.y, 20, 0, Math.PI * 2);
-  c.fill();
-
-  //Draw ants
-  c.fillStyle = "black";
-  for (let ant of ants) {
-    c.beginPath();
-    c.ellipse(ant.x, ant.y, 10, 3, ant.direction, 0, Math.PI * 2);
-    c.fill();
-  }
-};
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const animationLoop = async () => {
   // Update anthill
-  if (hill.ants > 0 && frame % 150 == 0) {
+  if (hill.ants > 0 && tick % 150 == 0) {
     hill.ants -= 1;
     ants.push({
       x: hill.x,
@@ -177,16 +122,19 @@ const animationLoop = async () => {
     ants[a].y += Math.sin(ants[a].direction) * antSpeed;
   }
 
-  // Render current state
-  render();
-
-  // Set framerate to approximately 60fps
-  frame += 1;
-  // await sleep(17);
-
-  // Recursive
-  window.requestAnimationFrame(animationLoop);
+  tick++;
 };
 
-// Start animation loop
-window.requestAnimationFrame(animationLoop);
+// Start logic loop
+updateLoop();
+
+// Start render loop
+const renderer = new Renderer(
+  hill,
+  ants,
+  worldFood,
+  <CanvasRenderingContext2D>canvas.getContext("2d"),
+  canvas.width,
+  canvas.height
+);
+renderer.renderLoop();
