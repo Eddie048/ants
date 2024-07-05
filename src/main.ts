@@ -44,7 +44,7 @@ for (let i = 0; i < 10; i++) {
   worldFood.push({
     x: Math.random() * (canvas.width - 100) + 50,
     y: Math.random() * (canvas.height - 100) + 50,
-    food: Math.random() * 20 + 10,
+    food: Math.random() * 10,
   });
 }
 
@@ -60,7 +60,13 @@ const render = () => {
   c.fillStyle = "green";
   for (let food of worldFood) {
     c.beginPath();
-    c.arc(food.x, food.y, Math.sqrt(food.food / Math.PI) * 3, 0, Math.PI * 2);
+    c.arc(
+      food.x,
+      food.y,
+      Math.sqrt(food.food / Math.PI) * 3 + 5,
+      0,
+      Math.PI * 2
+    );
     c.fill();
   }
 
@@ -96,49 +102,79 @@ const animationLoop = async () => {
   }
 
   // Update ants
-  for (let ant of ants) {
+  for (let a = 0; a < ants.length; a++) {
     // If ant has food, returns to anthill
-    if (ant.hasFood) {
+    if (ants[a].hasFood) {
+      // If at anthill, go inside and deposit food
+      if (
+        Math.sqrt(
+          Math.pow(hill.y - ants[a].y, 2) + Math.pow(hill.x - ants[a].x, 2)
+        ) < 15
+      ) {
+        hill.ants++;
+        hill.food++;
+        ants.splice(a, 1);
+        a--;
+        continue;
+      }
+
       // Get direction to anthill
-      let hillDirection = Math.atan((hill.y - ant.y) / (hill.x - ant.x));
-      if (hill.x - ant.x < 0) hillDirection += Math.PI;
+      let hillDirection = Math.atan(
+        (hill.y - ants[a].y) / (hill.x - ants[a].x)
+      );
+      if (hill.x - ants[a].x < 0) hillDirection += Math.PI;
 
       if (hillDirection < 0) hillDirection += Math.PI * 2;
 
-      let delta = ant.direction - hillDirection;
+      let delta = ants[a].direction - hillDirection;
       if (
         (delta > 0 && delta < -1 * delta + Math.PI * 2) ||
         (delta < 0 && delta + Math.PI * 2 < -1 * delta)
       )
-        ant.direction -= 0.1;
-      else ant.direction += 0.1;
+        ants[a].direction -= 0.1;
+      else ants[a].direction += 0.1;
     } else {
+      // If ant found food, eat it
+      for (let f = 0; f < worldFood.length; f++) {
+        if (
+          Math.sqrt(
+            Math.pow(worldFood[f].y - ants[a].y, 2) +
+              Math.pow(worldFood[f].x - ants[a].x, 2)
+          ) < 25
+        ) {
+          worldFood[f].food--;
+          if (worldFood[f].food <= 0) worldFood.splice(f, 1);
+          ants[a].hasFood = true;
+          break;
+        }
+      }
+
       // Looking for food, wander randomly
-      ant.direction = ant.direction + Math.random() * 0.3 - 0.15;
+      ants[a].direction = ants[a].direction + Math.random() * 0.3 - 0.15;
 
       // If ant hits a border, reverse direction
       if (
-        ant.x > canvas.width ||
-        ant.x < 0 ||
-        ant.y > canvas.height ||
-        ant.y < 0
+        ants[a].x > canvas.width ||
+        ants[a].x < 0 ||
+        ants[a].y > canvas.height ||
+        ants[a].y < 0
       )
-        ant.direction += Math.PI;
+        ants[a].direction += Math.PI;
     }
 
     // Normalize ant direction
-    ant.direction = ant.direction % (Math.PI * 2);
-    if (ant.direction < 0) ant.direction += Math.PI * 2;
+    ants[a].direction = ants[a].direction % (Math.PI * 2);
+    if (ants[a].direction < 0) ants[a].direction += Math.PI * 2;
 
     // Ensure ant is within the borders
-    if (ant.x > canvas.width) ant.x = canvas.width;
-    if (ant.x < 0) ant.x = 0;
-    if (ant.y > canvas.height) ant.y = canvas.height;
-    if (ant.y < 0) ant.y = 0;
+    if (ants[a].x > canvas.width) ants[a].x = canvas.width;
+    if (ants[a].x < 0) ants[a].x = 0;
+    if (ants[a].y > canvas.height) ants[a].y = canvas.height;
+    if (ants[a].y < 0) ants[a].y = 0;
 
     // Update ant position with current direction and speed
-    ant.x += Math.cos(ant.direction) * antSpeed;
-    ant.y += Math.sin(ant.direction) * antSpeed;
+    ants[a].x += Math.cos(ants[a].direction) * antSpeed;
+    ants[a].y += Math.sin(ants[a].direction) * antSpeed;
   }
 
   // Render current state
@@ -146,7 +182,7 @@ const animationLoop = async () => {
 
   // Set framerate to approximately 60fps
   frame += 1;
-  await sleep(17);
+  // await sleep(17);
 
   // Recursive
   window.requestAnimationFrame(animationLoop);
