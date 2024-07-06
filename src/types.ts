@@ -18,4 +18,10 @@ type Food = {
   food: number;
 };
 
-export { type Ant, type Anthill, type Food };
+type Pheremone = {
+  x: number;
+  y: number;
+  timer: number;
+};
+
+export { type Ant, type Anthill, type Food, type Pheremone };

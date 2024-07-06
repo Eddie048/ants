@@ -1,5 +1,5 @@
 import Renderer from "./renderer";
-import { Ant, Anthill, Food } from "./types";
+import { Ant, Anthill, Food, Pheremone } from "./types";
 
 // Initialize canvas and rendering context with correct width and height
 const canvas = <HTMLCanvasElement>document.getElementById("canvas");
@@ -9,7 +9,8 @@ canvas.width = document.body.clientWidth;
 // Time counter
 var tick = 0;
 
-const antSight = 200;
+// Ant stats
+const antSight = 50;
 const antSpeed = 2;
 
 const hill: Anthill = {
@@ -21,7 +22,19 @@ const hill: Anthill = {
 
 const ants: Ant[] = [];
 
-const updateDirection = (
+// Populate world food
+const worldFood: Food[] = [];
+for (let i = 0; i < 20; i++) {
+  worldFood.push({
+    x: Math.random() * (canvas.width - 100) + 50,
+    y: Math.random() * (canvas.height - 100) + 50,
+    food: Math.random() * 10,
+  });
+}
+
+const pheremones: Pheremone[] = [];
+
+const getTurnDirection = (
   atX: number,
   atY: number,
   curDirection: number,
@@ -41,19 +54,9 @@ const updateDirection = (
     (delta > 0 && delta < -1 * delta + Math.PI * 2) ||
     (delta < 0 && delta + Math.PI * 2 < -1 * delta)
   )
-    return (curDirection -= 0.1);
-  else return (curDirection += 0.1);
+    return -0.1;
+  else return 0.1;
 };
-
-// Populate world food
-const worldFood: Food[] = [];
-for (let i = 0; i < 20; i++) {
-  worldFood.push({
-    x: Math.random() * (canvas.width - 100) + 50,
-    y: Math.random() * (canvas.height - 100) + 50,
-    food: Math.random() * 10,
-  });
-}
 
 // Logic loop to update everything
 const updateLoop = () => {
@@ -88,13 +91,29 @@ const updateLoop = () => {
       }
 
       // Turn towards anthill
-      ants[a].direction = updateDirection(
+      ants[a].direction += getTurnDirection(
         ants[a].x,
         ants[a].y,
         ants[a].direction,
         hill.x,
         hill.y
       );
+
+      // If no pheremones nearby, drop one
+      let distance = Number.MAX_VALUE;
+      for (let p = 0; p < pheremones.length; p++) {
+        let tempDist = Math.sqrt(
+          Math.pow(pheremones[p].y - ants[a].y, 2) +
+            Math.pow(pheremones[p].x - ants[a].x, 2)
+        );
+        if (tempDist < distance) {
+          distance = tempDist;
+        }
+      }
+
+      if (distance >= 35) {
+        pheremones.push({ x: ants[a].x, y: ants[a].y, timer: 500 });
+      }
     } else {
       // Find distance to nearest food
       let distance = Number.MAX_VALUE;
@@ -118,7 +137,7 @@ const updateLoop = () => {
         ants[a].hasFood = true;
       } else if (foodIndex != -1 && distance < antSight) {
         // If near food, go towards it
-        ants[a].direction = updateDirection(
+        ants[a].direction += getTurnDirection(
           ants[a].x,
           ants[a].y,
           ants[a].direction,
@@ -155,6 +174,15 @@ const updateLoop = () => {
     ants[a].y += Math.sin(ants[a].direction) * antSpeed;
   }
 
+  // Update pheremones
+  for (let p = 0; p < pheremones.length; p++) {
+    pheremones[p].timer--;
+    if (pheremones[p].timer <= 0) {
+      pheremones.splice(p, 1);
+      p--;
+    }
+  }
+
   tick++;
 };
 
@@ -166,6 +194,7 @@ const renderer = new Renderer(
   hill,
   ants,
   worldFood,
+  pheremones,
   <CanvasRenderingContext2D>canvas.getContext("2d"),
   canvas.width,
   canvas.height
